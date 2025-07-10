@@ -32,6 +32,9 @@ fetch('ord.txt')
   });
 
 let wordList = [];
+let shuffledWords = [];
+let solution = "";
+let wordListLoaded = false;
 
 fetch('wordList.txt')
   .then(response => {
@@ -45,6 +48,7 @@ fetch('wordList.txt')
       .filter(w => w.length === 5);
     shuffledWords = shuffle([...wordList]);
     solution = shuffledWords[0].toLowerCase();
+    wordListLoaded = true;
   })
   .catch(err => {
     alert("Kunde inte ladda wordList.txt. Kontrollera din anslutning eller försök igen senare.");
@@ -58,25 +62,6 @@ function shuffle(array) {
   }
   return array;
 }
-
-let shuffledWords = shuffle([...wordList]);
-let solution = shuffledWords[0].toLowerCase();
-const board = document.getElementById("board");
-const message = document.getElementById("message");
-let tries = 0;
-let playingDaily = false;
-let lastGuess = "";         // Senaste gissade ord
-let hintUsed = false;       // Om lampan redan klickats
-
-const soundCorrect = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
-const soundWrong = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-const soundWin = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg");
-const soundLose = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
-
-soundCorrect.load();
-soundWrong.load();
-soundWin.load();
-soundLose.load();
 
 function createRow(guess, feedback) {
   const row = document.createElement("div");
@@ -112,6 +97,10 @@ function checkGuess() {
   }
   if (!dictionaryLoaded) {
     alert("Ordbanken laddas, vänta ett ögonblick och försök igen.");
+    return;
+  }
+  if (!wordListLoaded) {
+    alert("WordList laddas, vänta ett ögonblick och försök igen.");
     return;
   }
   if (!dictionary.includes(guess)) {
@@ -188,6 +177,10 @@ function resetKeyboardColors() {
 }
 
 function restartGame() {
+  if (!wordListLoaded) {
+    alert("WordList laddas, vänta ett ögonblick och försök igen.");
+    return;
+  }
   hintUsed = false;
   lastGuess = "";
   playingDaily = false;
@@ -204,6 +197,10 @@ function restartGame() {
 }
 
 function getWordOfTheDay() {
+  if (!wordListLoaded) {
+    alert("WordList laddas, vänta ett ögonblick och försök igen.");
+    return { word: "", dayNumber: 0 };
+  }
   const startDate = new Date("2025-01-01"); // Valfritt startdatum
   const today = new Date();
 
@@ -217,6 +214,10 @@ function getWordOfTheDay() {
 }
 
 function startDailyGame() {
+  if (!wordListLoaded) {
+    alert("WordList laddas, vänta ett ögonblick och försök igen.");
+    return;
+  }
   const daily = getWordOfTheDay();
   playingDaily = true;
   hintUsed = false;
