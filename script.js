@@ -33,9 +33,9 @@ fetch('ord.txt')
 
 // wordList = ord som kan vara lösningarna (väljs manuellt)
 const wordList = [
-  "banan", "glass", "fikon", "löper", "piano", "spela", "mamma", "helig", "mango", "pappa", "kalle", "grish", "memes", 
+  "banan", "glass", "fikon", "löper", "piano", "spela", "mamma", "helig", "mango", "pappa", "grish", "memes", 
   "lotto", "dvärg", "löken", "ninja", "hårig", "bandy", "fikar", "godis", "kakor", "svett", "undan", "zooma", "nalle", 
-  "gubbe", "pizza", "grilla", "humor", "humör", "skola", "skägg"
+  "gubbe", "pizza", "grilla", "humor", "humör", "skola", "skägg", "lakan", "lampa"
 ];
 
 // Blanda orden slumpmässigt (Fisher-Yates shuffle)
