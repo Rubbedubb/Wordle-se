@@ -85,7 +85,7 @@ button {
 }
 
 .tile.flip {
-  animation: flip 1s ease;
+  animation: flip 0.4s ease;
   transform-style: preserve-3d;
   backface-visibility: hidden;
 }

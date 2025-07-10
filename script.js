@@ -35,6 +35,7 @@ let wordList = [];
 let shuffledWords = [];
 let solution = "";
 let wordListLoaded = false;
+let tries = 0; // Lägg till denna rad bland globala variabler
 
 // Ljudfiler (lägg till dina egna ljudfiler i projektmappen)
 const soundCorrect = new Audio("correct.mp3");
@@ -73,6 +74,8 @@ function createRow(guess, feedback) {
   const row = document.createElement("div");
   row.className = "row";
 
+  let lastWasGreen = false;
+
   for (let i = 0; i < 5; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
@@ -80,7 +83,12 @@ function createRow(guess, feedback) {
 
     row.appendChild(tile);
 
-    // Vänta lite innan varje ruta får feedback + animation
+    // Om föregående ljud var correct.mp3, vänta lite längre innan nästa ljud
+    let delay = i * 300;
+    if (i > 0 && feedback[i - 1] === "green") {
+      delay += 350; // Vänta 150 ms extra om förra var grön
+    }
+
     setTimeout(() => {
       tile.classList.add("flip");
       if (feedback) tile.classList.add(feedback[i]);
@@ -89,7 +97,7 @@ function createRow(guess, feedback) {
       if (feedback[i] === "green") new Audio("correct.mp3").play();
       else if (feedback[i] === "yellow") new Audio("wrong.mp3").play();
       else new Audio("wrong.mp3").play();
-    }, i * 300); // 300 ms mellan varje ruta
+    }, delay);
   }
 
   board.appendChild(row);
@@ -143,7 +151,7 @@ function checkGuess() {
   createRow(guess, feedback);
   updateKeyboard(guess, feedback);
   input.value = "";
-  tries++;
+  tries++; // <--- Denna rad är viktig!
   lastGuess = guess;
 
   // Avsluta spelet när det är klart
