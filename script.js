@@ -1,3 +1,5 @@
+// Huvudscript för svensk Wordle-se
+
 // Ladda in alla ord från ord.txt till dictionary[] (tillåtna ord)
 let dictionary = [];
 let dictionaryLoaded = false;
