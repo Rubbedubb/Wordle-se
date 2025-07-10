@@ -40,6 +40,7 @@ let tries = 0; // Lägg till denna rad bland globala variabler
 // Ljudfiler (lägg till dina egna ljudfiler i projektmappen)
 const soundCorrect = new Audio("correct.mp3");
 const soundWrong = new Audio("wrong.mp3");
+const soundYellow = new Audio("yellow.mp3");
 const soundWin = new Audio("win.mp3");
 const soundLose = new Audio("lose.mp3");
 
@@ -86,7 +87,7 @@ function createRow(guess, feedback) {
     // Om föregående ljud var correct.mp3, vänta lite längre innan nästa ljud
     let delay = i * 300;
     if (i > 0 && feedback[i - 1] === "green") {
-      delay += 350; // Vänta 150 ms extra om förra var grön
+      delay += 150; // Vänta 150 ms extra om förra var grön
     }
 
     setTimeout(() => {
@@ -94,12 +95,19 @@ function createRow(guess, feedback) {
       if (feedback) tile.classList.add(feedback[i]);
 
       // Spela olika ljud beroende på feedback
-      if (feedback[i] === "green") new Audio("correct.mp3").play();
-      else if (feedback[i] === "yellow") new Audio("wrong.mp3").play();
-      else new Audio("wrong.mp3").play();
+      // Spela olika ljud beroende på feedback
+      if (feedback[i] === "green") {
+        soundCorrect.currentTime = 0;
+        soundCorrect.play();
+      } else if (feedback[i] === "yellow") {
+        soundYellow.currentTime = 0;
+        soundYellow.play();
+      } else {
+        soundWrong.currentTime = 0;
+        soundWrong.play();
+      }
     }, delay);
   }
-
   board.appendChild(row);
 }
 
@@ -156,14 +164,14 @@ function checkGuess() {
 
   // Avsluta spelet när det är klart
   if (guess === solution) {
-    new Audio("win.mp3").play();
+    soundWin.play();
     message.textContent = `🎉 Du klarade det på ${tries}/6 försök!`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(true, tries);
   }
   else if (tries >= 6) {
-    new Audio("lose.mp3").play();
+    soundLose.play();
     message.textContent = `❌ Du förlorade! Ordet var: ${solution.toUpperCase()}`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
@@ -361,4 +369,3 @@ function updateKeyboard(guess, feedback) {
     }
   }
 }
-
