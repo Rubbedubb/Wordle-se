@@ -35,7 +35,7 @@ fetch('ord.txt')
 const wordList = [
   "banan", "glass", "fikon", "löper", "piano", "spela", "mamma", "helig", "mango", "pappa", "kalle", "grish", "memes", 
   "lotto", "dvärg", "löken", "ninja", "hårig", "bandy", "fikar", "godis", "kakor", "svett", "undan", "zooma", "nalle", 
-  "gubbe", "pizza", "grilla", "humor", "humör", "skola"
+  "gubbe", "pizza", "grilla", "humor", "humör", "skola", "skägg"
 ];
 
 // Blanda orden slumpmässigt (Fisher-Yates shuffle)
