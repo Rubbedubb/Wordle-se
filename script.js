@@ -86,9 +86,9 @@ function createRow(guess, feedback) {
       if (feedback) tile.classList.add(feedback[i]);
 
       // Spela olika ljud beroende på feedback
-      if (feedback[i] === "green") soundCorrect.play();
-      else if (feedback[i] === "yellow") soundWrong.play();
-      else soundWrong.play();
+      if (feedback[i] === "green") new Audio("correct.mp3").play();
+      else if (feedback[i] === "yellow") new Audio("wrong.mp3").play();
+      else new Audio("wrong.mp3").play();
     }, i * 300); // 300 ms mellan varje ruta
   }
 
@@ -96,6 +96,9 @@ function createRow(guess, feedback) {
 }
 
 function checkGuess() {
+  // Stoppa om spelet är slut
+  if (input.disabled) return;
+
   const guess = input.value.toLowerCase();
   if (guess.length !== 5) {
     alert("Ordet måste vara 5 bokstäver!");
@@ -145,14 +148,14 @@ function checkGuess() {
 
   // Avsluta spelet när det är klart
   if (guess === solution) {
-    soundWin.play();
+    new Audio("win.mp3").play();
     message.textContent = `🎉 Du klarade det på ${tries}/6 försök!`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(true, tries);
   }
   else if (tries >= 6) {
-    soundLose.play();
+    new Audio("lose.mp3").play();
     message.textContent = `❌ Du förlorade! Ordet var: ${solution.toUpperCase()}`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
