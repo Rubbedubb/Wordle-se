@@ -263,8 +263,8 @@ footer {
   width: 100%;
   text-align: center;
   margin-top: 0;
-  color: #888;
-  background: #fff; /* valfritt, för bättre läsbarhet */
+  color: #fff;
+  /* background: #fff;  valfritt, för bättre läsbarhet */
   padding: 10px 0;
   z-index: 100;
 }
