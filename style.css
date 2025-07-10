@@ -200,59 +200,125 @@ button:hover,
 }
 
 @media (max-width: 600px) {
+  body {
+    padding-top: 10px;
+    font-size: 15px;
+    text-align: left;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    margin: 10px 0;
+  }
+
+  .author {
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+
+  #side-box {
+    position: static;
+    width: 95vw;
+    max-width: 100vw;
+    min-width: unset;
+    top: unset;
+    left: unset;
+    margin: 10px auto 10px auto;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    padding: 8px;
+    background: #222;
+    color: #ccc;
+    text-align: left;
+  }
+
+  main {
+    padding: 0 5px;
+  }
+
+  .board {
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .row {
+    gap: 3px;
+    grid-template-columns: repeat(5, 40px);
+  }
+
+  .tile {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    line-height: 32px;
+  }
+
+  .input-row {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 6px;
+    gap: 4px;
+  }
+
+  input {
+    width: 100%;
+    max-width: 240px;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  button,
+  .multiplayer-link {
+    font-size: 15px;
+    padding: 7px 10px;
+    margin: 3px 0;
+    width: 100%;
+    max-width: 240px;
+    box-sizing: border-box;
+  }
+
+  .message {
+    font-size: 16px;
+    margin-top: 10px;
+  }
+
+  #hint-button {
+    margin: 8px 0;
+  }
+
+  #history {
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
   .keyboard {
     width: 100%;
-    padding: 0 10px;
+    padding: 0 2px;
+    margin-top: 10px;
   }
 
   .keyboard-row {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: 2px;
+    margin-bottom: 2px;
   }
 
   .key {
-    font-size: 14px;
-    padding: 6px;
-    min-width: 32px;
-    max-width: 40px;
+    font-size: 13px;
+    padding: 5px;
+    min-width: 26px;
+    max-width: 32px;
   }
 
   .key.special {
-    min-width: 50px;
-    flex: none;
+    min-width: 40px;
+    font-size: 13px;
   }
 
-  #hint-button {
-    margin: 10px 0;
-  }
-
-  input {
-    width: 90%;
-    max-width: 300px;
-    font-size: 18px;
-  }
-
-  button {
-    font-size: 16px;
-    padding: 6px 12px;
-    margin: 4px;
-  }
-
-  .message {
-    font-size: 18px;
-  }
-
-  .row {
-    gap: 5px;
-  }
-
-  .tile {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-    line-height: 40px;
+  footer {
+    font-size: 13px;
+    padding: 7px 0;
   }
 }
 
