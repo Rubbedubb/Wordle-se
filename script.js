@@ -31,12 +31,24 @@ fetch('ord.txt')
     alert("Kunde inte ladda ordlistan. Kontrollera din anslutning eller försök igen senare.");
   });
 
-// wordList = ord som kan vara lösningarna (väljs manuellt)
-const wordList = [
-  "banan", "glass", "fikon", "löper", "piano", "spela", "mamma", "helig", "mango", "pappa", "grish", "memes", 
-  "lotto", "dvärg", "löken", "ninja", "hårig", "bandy", "fikar", "godis", "kakor", "svett", "undan", "zooma", "nalle", 
-  "gubbe", "pizza", "grilla", "humor", "humör", "skola", "skägg", "lakan", "lampa"
-];
+let wordList = [];
+
+fetch('wordList.txt')
+  .then(response => {
+    if (!response.ok) throw new Error('Kunde inte ladda wordList.txt');
+    return response.text();
+  })
+  .then(text => {
+    wordList = text
+      .split(',')
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
+    shuffledWords = shuffle([...wordList]);
+    solution = shuffledWords[0].toLowerCase();
+  })
+  .catch(err => {
+    alert("Kunde inte ladda wordList.txt. Kontrollera din anslutning eller försök igen senare.");
+  });
 
 // Blanda orden slumpmässigt (Fisher-Yates shuffle)
 function shuffle(array) {
