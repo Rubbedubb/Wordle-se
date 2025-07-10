@@ -36,6 +36,12 @@ let shuffledWords = [];
 let solution = "";
 let wordListLoaded = false;
 
+// Ljudfiler (lägg till dina egna ljudfiler i projektmappen)
+const soundCorrect = new Audio("correct.mp3");
+const soundWrong = new Audio("wrong.mp3");
+const soundWin = new Audio("win.mp3");
+const soundLose = new Audio("lose.mp3");
+
 fetch('wordList.txt')
   .then(response => {
     if (!response.ok) throw new Error('Kunde inte ladda wordList.txt');
@@ -78,11 +84,11 @@ function createRow(guess, feedback) {
     setTimeout(() => {
       tile.classList.add("flip");
       if (feedback) tile.classList.add(feedback[i]);
-      
+
       // Spela olika ljud beroende på feedback
-    if (feedback[i] === "green") new Audio(soundCorrect.src).play();
-    else if (feedback[i] === "yellow") new Audio(soundWrong.src).play();
-    else new Audio(soundWrong.src).play();
+      if (feedback[i] === "green") soundCorrect.play();
+      else if (feedback[i] === "yellow") soundWrong.play();
+      else soundWrong.play();
     }, i * 300); // 300 ms mellan varje ruta
   }
 
@@ -137,18 +143,21 @@ function checkGuess() {
   tries++;
   lastGuess = guess;
 
+  // Avsluta spelet när det är klart
   if (guess === solution) {
-  soundWin.play();
-  message.textContent = `🎉 Du klarade det på ${tries}/6 försök!`;
-  input.disabled = true;
-  if (playingDaily) saveResult(true, tries);
-}
+    soundWin.play();
+    message.textContent = `🎉 Du klarade det på ${tries}/6 försök!`;
+    input.disabled = true;
+    if (guessButton) guessButton.disabled = true;
+    if (playingDaily) saveResult(true, tries);
+  }
   else if (tries >= 6) {
-  soundLose.play();
-  message.textContent = `❌ Du förlorade! Ordet var: ${solution.toUpperCase()}`;
-  input.disabled = true;
-  if (playingDaily) saveResult(false, tries);
-}
+    soundLose.play();
+    message.textContent = `❌ Du förlorade! Ordet var: ${solution.toUpperCase()}`;
+    input.disabled = true;
+    if (guessButton) guessButton.disabled = true;
+    if (playingDaily) saveResult(false, tries);
+  }
 }
 
 function showHint() {
