@@ -1,5 +1,29 @@
 // Huvudscript för svensk Wordle-se
 
+const socket = io("https://wordle-backend-63w9.onrender.com");
+
+let currentParty = "";
+let playerName = "";
+
+// Exempel: anslut automatiskt vid sidstart
+document.addEventListener("DOMContentLoaded", () => {
+  playerName = prompt("Vad heter du?");
+  currentParty = prompt("Ange partykod (t.ex. ABC123):").toUpperCase();
+  
+  socket.emit("join", { name: playerName, party: currentParty });
+
+  socket.on("message", msg => {
+    console.log("SERVER:", msg);
+  });
+
+  socket.on("feedback", ({ guess, feedback, from }) => {
+    if (from !== playerName) {
+      console.log(`${from} gissade: ${guess} → ${feedback.join(" ")}`);
+      createRow(guess, feedback); // visa andras rader
+    }
+  });
+});
+
 // Ladda in alla ord från ord.txt till dictionary[] (tillåtna ord)
 let dictionary = [];
 let dictionaryLoaded = false;
@@ -177,6 +201,10 @@ function checkGuess() {
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(false, tries);
   }
+  socket.emit("guess", {
+  party: currentParty,
+  guess: guess
+});
 }
 
 function showHint() {
