@@ -74,6 +74,16 @@ fetch('wordList.txt')
     wordList = text.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
     shuffledWords = shuffle([...wordList]);
     wordListLoaded = true;
+
+    // —————— NY KOD FÖR SINGELPLAYER ——————
+    if (!isMultiplayer) {
+      // Sätt första ordet som lösning
+      solution = shuffledWords[0];
+      // Öppna upp input och knapp
+      input.disabled = false;
+      if (guessButton) guessButton.disabled = false;
+    }
+    // ————————————————————————————————
   })
   .catch(() => alert("Kunde inte ladda wordList.txt."));
 
@@ -190,14 +200,15 @@ function restartGame() {
   message.textContent = "";
   resetKeyboardColors();
 
-  // I SINGLEPLAYER: hämta nytt ord
+  // Endast i singelplayer: hämta nytt ord
   if (!isMultiplayer) {
     shuffledWords = shuffle([...wordList]);
     solution      = shuffledWords[0];
-    input.disabled = false;
-    if (guessButton) guessButton.disabled = false;
   }
-  // I MULTIPLAYER: lösningen sattes redan i socket.on("start"/"restart")
+
+  // Oavsett läge: öppna input
+  input.disabled = false;
+  if (guessButton) guessButton.disabled = false;
 }
 
 function getWordOfTheDay() {
