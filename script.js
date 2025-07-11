@@ -73,7 +73,6 @@ fetch('wordList.txt')
   .then(text => {
     wordList = text.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
     shuffledWords = shuffle([...wordList]);
-    solution       = shuffledWords[0];
     wordListLoaded = true;
   })
   .catch(() => alert("Kunde inte ladda wordList.txt."));
@@ -182,19 +181,23 @@ function resetKeyboardColors() {
 }
 
 function restartGame() {
-  if (!wordListLoaded) return alert("Laddar fortfarande…");
+  if (!wordListLoaded) return alert("Laddar ordlistan…");
+
   hintUsed = false;
   lastGuess = "";
-  playingDaily = false;
-  shuffledWords = shuffle([...wordList]);
-  solution = shuffledWords[0];
+  tries = 0;
   board.innerHTML = "";
   message.textContent = "";
-  tries = 0;
-  input.disabled = !dictionaryLoaded;
-  if (guessButton) guessButton.disabled = !dictionaryLoaded;
-  input.value = "";
   resetKeyboardColors();
+
+  // I SINGLEPLAYER: hämta nytt ord
+  if (!isMultiplayer) {
+    shuffledWords = shuffle([...wordList]);
+    solution      = shuffledWords[0];
+    input.disabled = false;
+    if (guessButton) guessButton.disabled = false;
+  }
+  // I MULTIPLAYER: lösningen sattes redan i socket.on("start"/"restart")
 }
 
 function getWordOfTheDay() {
@@ -303,4 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
     history.forEach(e => html += `<li>${e.date} – Dag ${e.dayNumber} – ${e.success?`✅ ${e.attempts}/6`:'❌ Förlorade'} – (${e.word.toUpperCase()})</li>`);
     container.innerHTML = html + "</ul>";
   });
+
+  // Starta singelplayer-omgång direkt
+  if (!isMultiplayer) restartGame();
 });
