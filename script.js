@@ -5,25 +5,6 @@ const socket = io("https://wordle-backend-63w9.onrender.com");
 let currentParty = "";
 let playerName = "";
 
-// Exempel: anslut automatiskt vid sidstart
-document.addEventListener("DOMContentLoaded", () => {
-  playerName = prompt("Vad heter du?");
-  currentParty = prompt("Ange partykod (t.ex. ABC123):").toUpperCase();
-  
-  socket.emit("join", { name: playerName, party: currentParty });
-
-  socket.on("message", msg => {
-    console.log("SERVER:", msg);
-  });
-
-  socket.on("feedback", ({ guess, feedback, from }) => {
-    if (from !== playerName) {
-      console.log(`${from} gissade: ${guess} → ${feedback.join(" ")}`);
-      createRow(guess, feedback); // visa andras rader
-    }
-  });
-});
-
 // Ladda in alla ord från ord.txt till dictionary[] (tillåtna ord)
 let dictionary = [];
 let dictionaryLoaded = false;
@@ -136,7 +117,6 @@ function createRow(guess, feedback) {
 }
 
 function checkGuess() {
-  // Stoppa om spelet är slut
   if (input.disabled) return;
 
   const guess = input.value.toLowerCase();
@@ -144,12 +124,8 @@ function checkGuess() {
     alert("Ordet måste vara 5 bokstäver!");
     return;
   }
-  if (!dictionaryLoaded) {
-    alert("Ordbanken laddas, vänta ett ögonblick och försök igen.");
-    return;
-  }
-  if (!wordListLoaded) {
-    alert("WordList laddas, vänta ett ögonblick och försök igen.");
+  if (!dictionaryLoaded || !wordListLoaded) {
+    alert("Ordlistor laddas fortfarande – vänta lite.");
     return;
   }
   if (!dictionary.includes(guess)) {
@@ -160,7 +136,7 @@ function checkGuess() {
   let feedback = Array(5).fill("gray");
   let used = Array(5).fill(false);
 
-  // Kolla rätt position (grön)
+  // Grön (rätt bokstav och plats)
   for (let i = 0; i < 5; i++) {
     if (guess[i] === solution[i]) {
       feedback[i] = "green";
@@ -168,7 +144,7 @@ function checkGuess() {
     }
   }
 
-  // Kolla fel position (gul)
+  // Gul (rätt bokstav, fel plats)
   for (let i = 0; i < 5; i++) {
     if (feedback[i] === "green") continue;
     for (let j = 0; j < 5; j++) {
@@ -183,28 +159,40 @@ function checkGuess() {
   createRow(guess, feedback);
   updateKeyboard(guess, feedback);
   input.value = "";
-  tries++; // <--- Denna rad är viktig!
+  tries++;
   lastGuess = guess;
 
-  // Avsluta spelet när det är klart
+  // Skicka gissning till andra spelare om multiplayer är aktivt
+  if (isMultiplayer) {
+    socket.emit("guess", {
+      party: currentParty,
+      guess: guess
+    });
+  }
+
+  // Vinst/förlust
   if (guess === solution) {
     soundWin.play();
     message.textContent = `🎉 Du klarade det på ${tries}/6 försök!`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(true, tries);
-  }
-  else if (tries >= 6) {
+  } else if (tries >= 6) {
     soundLose.play();
     message.textContent = `❌ Du förlorade! Ordet var: ${solution.toUpperCase()}`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(false, tries);
   }
-  socket.emit("guess", {
-  party: currentParty,
-  guess: guess
-});
+}
+
+function generatePartyCode() {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 5; i++) {
+    code += letters[Math.floor(Math.random() * letters.length)];
+  }
+  return code;
 }
 
 function showHint() {
@@ -365,6 +353,39 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   html += "</ul>";
   container.innerHTML = html;
+});
+let isMultiplayer = false;
+
+const socket = io("https://wordle-backend-63w9.onrender.com");
+
+document.getElementById("create-party").addEventListener("click", () => {
+  playerName = prompt("Ditt namn:");
+  currentParty = generatePartyCode();
+  isMultiplayer = true;
+
+  socket.emit("join", { name: playerName, party: currentParty });
+
+  document.getElementById("party-info").innerHTML = `
+    <p>Du har skapat party: <strong>${currentParty}</strong></p>
+    <p>Dela koden med en kompis!</p>
+  `;
+});
+
+document.getElementById("join-party").addEventListener("click", () => {
+  playerName = prompt("Ditt namn:");
+  currentParty = document.getElementById("join-code").value.toUpperCase().trim();
+
+  if (currentParty.length < 3) {
+    alert("Ogiltig partykod");
+    return;
+  }
+
+  isMultiplayer = true;
+  socket.emit("join", { name: playerName, party: currentParty });
+
+  document.getElementById("party-info").innerHTML = `
+    <p>Du har gått med i party: <strong>${currentParty}</strong></p>
+  `;
 });
 });
 
