@@ -1,27 +1,61 @@
 // Huvudscript för svensk Wordle-se
 
+// ---------- Socket.IO Setup ----------
 const socket = io("https://wordle-backend-63w9.onrender.com");
 
+socket.on("start", ({ word }) => {
+  console.log("Spelet har börjat – ordet är:", word);
+  solution = word;
+  restartGame();
+});
+
+socket.on("restart", ({ word }) => {
+  console.log("Spelet har startats om – nytt ord:", word);
+  solution = word;
+  restartGame();
+});
+
+// ---------- Globala variabler ----------
+let isMultiplayer = false;
+let isHost = false;
 let currentParty = "";
 let playerName = "";
 
-// Ladda in alla ord från ord.txt till dictionary[] (tillåtna ord)
-let dictionary = [];
+const board      = document.getElementById("board");
+const message    = document.getElementById("message");
+let lastGuess    = "";
+let hintUsed     = false;
+let playingDaily = false;
+
+// Ordbanker
+let dictionary       = [];
 let dictionaryLoaded = false;
-const input = document.getElementById("guess");
+let wordList         = [];
+let shuffledWords    = [];
+let solution         = "";
+let wordListLoaded   = false;
+let tries            = 0;
+
+// DOM-element
+const input       = document.getElementById("guess");
 const guessButton = document.querySelector("button[onclick='checkGuess()']");
-const loadingMsg = document.createElement("div");
-loadingMsg.id = "loading-msg";
+const loadingMsg  = document.createElement("div");
+loadingMsg.id   = "loading-msg";
 loadingMsg.textContent = "Laddar ordbank...";
 document.body.insertBefore(loadingMsg, document.body.firstChild);
 input.disabled = true;
 if (guessButton) guessButton.disabled = true;
 
+// Ljudfiler
+const soundCorrect = new Audio("sounds/correct.mp3");
+const soundYellow  = new Audio("sounds/yellow.mp3");
+const soundWrong   = new Audio("sounds/wrong.mp3");
+const soundWin     = new Audio("sounds/win.mp3");
+const soundLose    = new Audio("sounds/lose.mp3");
+
+// ---------- Hämta ordlistor ----------
 fetch('ord.txt')
-  .then(response => {
-    if (!response.ok) throw new Error('Kunde inte ladda ordlistan.');
-    return response.text();
-  })
+  .then(r => r.ok ? r.text() : Promise.reject())
   .then(text => {
     dictionary = text.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
     dictionaryLoaded = true;
@@ -29,45 +63,22 @@ fetch('ord.txt')
     if (guessButton) guessButton.disabled = false;
     loadingMsg.remove();
   })
-  .catch(err => {
+  .catch(() => {
     loadingMsg.textContent = "Fel vid laddning av ordbank!";
-    input.disabled = true;
-    if (guessButton) guessButton.disabled = true;
-    alert("Kunde inte ladda ordlistan. Kontrollera din anslutning eller försök igen senare.");
+    alert("Kunde inte ladda ordlistan.");
   });
-
-let wordList = [];
-let shuffledWords = [];
-let solution = "";
-let wordListLoaded = false;
-let tries = 0; // Lägg till denna rad bland globala variabler
-
-// Ljudfiler (lägg till dina egna ljudfiler i projektmappen)
-const soundCorrect = new Audio("sounds/correct.mp3");
-const soundWrong = new Audio("sounds/wrong.mp3");
-const soundYellow = new Audio("sounds/yellow.mp3");
-const soundWin = new Audio("sounds/win.mp3");
-const soundLose = new Audio("sounds/lose.mp3");
 
 fetch('wordList.txt')
-  .then(response => {
-    if (!response.ok) throw new Error('Kunde inte ladda wordList.txt');
-    return response.text();
-  })
+  .then(r => r.ok ? r.text() : Promise.reject())
   .then(text => {
-    wordList = text
-      .split(',')
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length === 5);
+    wordList = text.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
     shuffledWords = shuffle([...wordList]);
-    solution = shuffledWords[0].toLowerCase();
+    solution       = shuffledWords[0];
     wordListLoaded = true;
   })
-  .catch(err => {
-    alert("Kunde inte ladda wordList.txt. Kontrollera din anslutning eller försök igen senare.");
-  });
+  .catch(() => alert("Kunde inte ladda wordList.txt."));
 
-// Blanda orden slumpmässigt (Fisher-Yates shuffle)
+// ---------- Hjälpfunktioner ----------
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -80,27 +91,17 @@ function createRow(guess, feedback) {
   const row = document.createElement("div");
   row.className = "row";
 
-  let lastWasGreen = false;
-
   for (let i = 0; i < 5; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
     tile.textContent = guess[i];
-
     row.appendChild(tile);
 
-    // Om föregående ljud var correct.mp3, vänta lite längre innan nästa ljud
-    let delay = i * 300;
-    if (i > 0 && feedback[i - 1] === "green") {
-      delay += 0; // Vänta 0 ms extra om förra var grön
-    }
-
+    const delay = i * 300;
     setTimeout(() => {
       tile.classList.add("flip");
-      if (feedback) tile.classList.add(feedback[i]);
-
-      // Spela olika ljud beroende på feedback
-      // Spela olika ljud beroende på feedback
+      tile.classList.add(feedback[i]);
+      // Spela ljud
       if (feedback[i] === "green") {
         soundCorrect.currentTime = 0;
         soundCorrect.play();
@@ -118,41 +119,20 @@ function createRow(guess, feedback) {
 
 function checkGuess() {
   if (input.disabled) return;
-
   const guess = input.value.toLowerCase();
-  if (guess.length !== 5) {
-    alert("Ordet måste vara 5 bokstäver!");
-    return;
-  }
-  if (!dictionaryLoaded || !wordListLoaded) {
-    alert("Ordlistor laddas fortfarande – vänta lite.");
-    return;
-  }
-  if (!dictionary.includes(guess)) {
-    alert("Ordet finns inte i ordbanken.");
-    return;
-  }
+  if (guess.length !== 5) return alert("Ordet måste vara 5 bokstäver!");
+  if (!dictionaryLoaded || !wordListLoaded) return alert("Ordlistor laddas – vänta.");
+  if (!dictionary.includes(guess)) return alert("Ordet finns inte.");
 
   let feedback = Array(5).fill("gray");
-  let used = Array(5).fill(false);
-
-  // Grön (rätt bokstav och plats)
+  let used     = Array(5).fill(false);
   for (let i = 0; i < 5; i++) {
-    if (guess[i] === solution[i]) {
-      feedback[i] = "green";
-      used[i] = true;
-    }
+    if (guess[i] === solution[i]) { feedback[i] = "green"; used[i] = true; }
   }
-
-  // Gul (rätt bokstav, fel plats)
   for (let i = 0; i < 5; i++) {
     if (feedback[i] === "green") continue;
     for (let j = 0; j < 5; j++) {
-      if (!used[j] && guess[i] === solution[j]) {
-        feedback[i] = "yellow";
-        used[j] = true;
-        break;
-      }
+      if (!used[j] && guess[i] === solution[j]) { feedback[i] = "yellow"; used[j] = true; break; }
     }
   }
 
@@ -162,24 +142,19 @@ function checkGuess() {
   tries++;
   lastGuess = guess;
 
-  // Skicka gissning till andra spelare om multiplayer är aktivt
   if (isMultiplayer) {
-    socket.emit("guess", {
-      party: currentParty,
-      guess: guess
-    });
+    socket.emit("guess", { party: currentParty, guess });
   }
 
-  // Vinst/förlust
   if (guess === solution) {
     soundWin.play();
-    message.textContent = `🎉 Du klarade det på ${tries}/6 försök!`;
+    message.textContent = `🎉 Klarade på ${tries}/6!`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(true, tries);
   } else if (tries >= 6) {
     soundLose.play();
-    message.textContent = `❌ Du förlorade! Ordet var: ${solution.toUpperCase()}`;
+    message.textContent = `❌ Förlust! Ordet var ${solution.toUpperCase()}`;
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(false, tries);
@@ -188,228 +163,144 @@ function checkGuess() {
 
 function generatePartyCode() {
   const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 5; i++) {
-    code += letters[Math.floor(Math.random() * letters.length)];
-  }
-  return code;
+  return Array.from({ length: 5 }, () => letters[Math.floor(Math.random() * letters.length)]).join("");
 }
 
 function showHint() {
-  if (hintUsed || !lastGuess || lastGuess.length !== 5) {
-    alert("💡 Inget tips tillgängligt just nu!");
-    return;
-  }
-
-  // Hitta första fel bokstav
+  if (hintUsed || lastGuess.length !== 5) return alert("Inget tips!");
   for (let i = 0; i < 5; i++) {
     if (lastGuess[i] !== solution[i]) {
-      alert(`💡 Tips: Bokstav ${i + 1} ska vara "${solution[i].toUpperCase()}"`);
       hintUsed = true;
-      return;
+      return alert(`Tips: Bokstav ${i+1} = ${solution[i].toUpperCase()}`);
     }
   }
-
-  alert("✅ Alla bokstäver var redan rätt!");
+  alert("Alla bokstäver redan rätt!");
 }
 
 function resetKeyboardColors() {
-  const keys = document.querySelectorAll(".key");
-  keys.forEach(key => {
-    key.classList.remove("green", "yellow", "gray");
-  });
+  document.querySelectorAll(".key").forEach(key => key.classList.remove("green","yellow","gray"));
 }
 
 function restartGame() {
-  if (!wordListLoaded) {
-    alert("WordList laddas, vänta ett ögonblick och försök igen.");
-    return;
-  }
+  if (!wordListLoaded) return alert("Laddar fortfarande…");
   hintUsed = false;
   lastGuess = "";
   playingDaily = false;
   shuffledWords = shuffle([...wordList]);
-  solution = shuffledWords[0].toLowerCase();
+  solution = shuffledWords[0];
   board.innerHTML = "";
   message.textContent = "";
   tries = 0;
   input.disabled = !dictionaryLoaded;
   if (guessButton) guessButton.disabled = !dictionaryLoaded;
   input.value = "";
-  input.focus();
   resetKeyboardColors();
 }
 
 function getWordOfTheDay() {
-  if (!wordListLoaded) {
-    alert("WordList laddas, vänta ett ögonblick och försök igen.");
-    return { word: "", dayNumber: 0 };
-  }
-  const startDate = new Date("2025-01-01"); // Valfritt startdatum
-  const today = new Date();
-
-  const diffTime = today - startDate;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  return {
-    word: wordList[diffDays % wordList.length].toLowerCase(),
-    dayNumber: diffDays
-  };
+  const startDate = new Date("2025-01-01");
+  const diff = Math.floor((Date.now() - startDate) / 86400000);
+  return { word: wordList[diff % wordList.length], dayNumber: diff };
 }
 
 function startDailyGame() {
-  if (!wordListLoaded) {
-    alert("WordList laddas, vänta ett ögonblick och försök igen.");
-    return;
-  }
-  const daily = getWordOfTheDay();
+  if (!wordListLoaded) return alert("Laddar…");
   playingDaily = true;
   hintUsed = false;
   lastGuess = "";
-  
-  solution = daily.word;
+  const { word, dayNumber } = getWordOfTheDay();
+  solution = word;
   board.innerHTML = "";
-  message.textContent = `🔁 Dagens ord – Dag ${daily.dayNumber}`;
+  message.textContent = `🔁 Dagens ord – Dag ${dayNumber}`;
   tries = 0;
-
-  const input = document.getElementById("guess");
   input.disabled = false;
   input.value = "";
-  input.focus();
-
   resetKeyboardColors();
 }
 
 function saveResult(success, attempts) {
-  const daily = getWordOfTheDay();
-  const result = {
-    date: new Date().toLocaleDateString("sv-SE"),
-    dayNumber: daily.dayNumber,
-    word: daily.word,
-    success: success,
-    attempts: success ? attempts : null
-  };
-
-  // Hämta nuvarande historik från localStorage
+  const { word, dayNumber } = getWordOfTheDay();
+  const date = new Date().toLocaleDateString("sv-SE");
   const history = JSON.parse(localStorage.getItem("wordleHistory") || "[]");
-
-  // Undvik dubbletter för samma dag
-  const alreadyExists = history.some(entry => entry.dayNumber === result.dayNumber);
-  if (!alreadyExists) {
-    history.push(result);
+  if (!history.some(e => e.dayNumber === dayNumber)) {
+    history.push({ date, dayNumber, word, success, attempts: success ? attempts : null });
     localStorage.setItem("wordleHistory", JSON.stringify(history));
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("restart").addEventListener("click", restartGame);
-  
-  document.getElementById("hint-button").addEventListener("click", showHint);
-
-  // Enter på tangentbordet
-  document.getElementById("guess").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      checkGuess();
+function updateKeyboard(guess, feedback) {
+  document.querySelectorAll(".key").forEach(key => {
+    const letter = key.textContent;
+    for (let i = 0; i < 5; i++) {
+      if (letter === guess[i].toUpperCase()) {
+        key.classList.add(feedback[i]);
+      }
     }
   });
+}
 
-  // Klick på alla tangenter (utom specialknappar)
+// ---------- Setup Events ----------
+document.addEventListener("DOMContentLoaded", () => {
+  // Dölj host-kontroller
+  document.getElementById("host-controls").style.display = "none";
+
+  // Standardknappar
+  document.getElementById("restart").addEventListener("click", restartGame);
+  document.getElementById("hint-button").addEventListener("click", showHint);
+  document.getElementById("play-daily").addEventListener("click", startDailyGame);
+
+  // Tangentbord & Enter
+  input.addEventListener("keydown", e => { if (e.key === "Enter") checkGuess(); });
   document.querySelectorAll(".key").forEach(key => {
-    if (key.id === "backspace") return; // hoppa över backspace
-
+    if (key.id === "backspace") return;
     key.addEventListener("click", () => {
-      const input = document.getElementById("guess");
-      if (input.value.length < 5 && !input.disabled) {
-        input.value += key.textContent.toLowerCase();
-      }
+      if (input.value.length < 5 && !input.disabled) input.value += key.textContent.toLowerCase();
     });
   });
-
-  // Backspace-knappen
   document.getElementById("backspace").addEventListener("click", () => {
-    const input = document.getElementById("guess");
-    if (!input.disabled && input.value.length > 0) {
-      input.value = input.value.slice(0, -1);
-    }
+    if (!input.disabled) input.value = input.value.slice(0, -1);
   });
-  document.getElementById("play-daily").addEventListener("click", startDailyGame);
-  
+
+  // Multiplayer-knappar
+  document.getElementById("create-party").addEventListener("click", () => {
+    playerName = prompt("Ditt namn:");
+    currentParty = generatePartyCode();
+    isMultiplayer = true;
+    isHost = true;
+    socket.emit("join", { name: playerName, party: currentParty });
+    document.getElementById("party-info").innerHTML = `
+      <p>Du har skapat party: <strong>${currentParty}</strong></p>
+      <p>Dela koden!</p>`;
+    document.getElementById("host-controls").style.display = "block";
+  });
+
+  document.getElementById("join-party").addEventListener("click", () => {
+    playerName = prompt("Ditt namn:");
+    currentParty = document.getElementById("join-code").value.toUpperCase().trim();
+    if (currentParty.length < 3) return alert("Ogiltig partykod");
+    isMultiplayer = true;
+    isHost = false;
+    socket.emit("join", { name: playerName, party: currentParty });
+    document.getElementById("party-info").innerHTML = `
+      <p>Du gick med i party: <strong>${currentParty}</strong></p>`;
+    document.getElementById("host-controls").style.display = "none";
+  });
+
+  // Host-kontroller
+  document.getElementById("start-game").addEventListener("click", () => {
+    if (isHost) socket.emit("startGame", { party: currentParty });
+  });
+  document.getElementById("restart-game").addEventListener("click", () => {
+    if (isHost) socket.emit("restartGame", { party: currentParty });
+  });
+
+  // Historik
   document.getElementById("show-history").addEventListener("click", () => {
-  const history = JSON.parse(localStorage.getItem("wordleHistory") || "[]");
-  const container = document.getElementById("history");
-
-  if (history.length === 0) {
-    container.innerHTML = "<p>Inga resultat ännu.</p>";
-    return;
-  }
-
-  let html = "<h3>📈 Historik</h3><ul style='list-style:none;padding:0'>";
-  history.forEach(entry => {
-    html += `<li>
-      ${entry.date} – Dag ${entry.dayNumber} – ${
-        entry.success ? `✅ ${entry.attempts}/6` : "❌ Förlorade"
-      } – (${entry.word.toUpperCase()})
-    </li>`;
+    const history = JSON.parse(localStorage.getItem("wordleHistory") || "[]");
+    const container = document.getElementById("history");
+    if (!history.length) return container.innerHTML = "<p>Inga resultat ännu.</p>";
+    let html = "<h3>📈 Historik</h3><ul style='list-style:none;padding:0'>";
+    history.forEach(e => html += `<li>${e.date} – Dag ${e.dayNumber} – ${e.success?`✅ ${e.attempts}/6`:'❌ Förlorade'} – (${e.word.toUpperCase()})</li>`);
+    container.innerHTML = html + "</ul>";
   });
-  html += "</ul>";
-  container.innerHTML = html;
 });
-let isMultiplayer = false;
-
-const socket = io("https://wordle-backend-63w9.onrender.com");
-
-document.getElementById("create-party").addEventListener("click", () => {
-  playerName = prompt("Ditt namn:");
-  currentParty = generatePartyCode();
-  isMultiplayer = true;
-
-  socket.emit("join", { name: playerName, party: currentParty });
-
-  document.getElementById("party-info").innerHTML = `
-    <p>Du har skapat party: <strong>${currentParty}</strong></p>
-    <p>Dela koden med en kompis!</p>
-  `;
-});
-
-document.getElementById("join-party").addEventListener("click", () => {
-  playerName = prompt("Ditt namn:");
-  currentParty = document.getElementById("join-code").value.toUpperCase().trim();
-
-  if (currentParty.length < 3) {
-    alert("Ogiltig partykod");
-    return;
-  }
-
-  isMultiplayer = true;
-  socket.emit("join", { name: playerName, party: currentParty });
-
-  document.getElementById("party-info").innerHTML = `
-    <p>Du har gått med i party: <strong>${currentParty}</strong></p>
-  `;
-});
-});
-
-// Funktion för att uppdatera färgerna på tangenterna
-function updateKeyboard(guess, feedback) {
-  const keys = document.querySelectorAll(".key");
-
-  for (let i = 0; i < guess.length; i++) {
-    const letter = guess[i].toUpperCase();
-    const key = [...keys].find(k => k.textContent === letter);
-    if (!key) continue;
-
-    if (feedback[i] === "green") {
-      key.classList.remove("yellow", "gray");
-      key.classList.add("green");
-    } else if (feedback[i] === "yellow" && !key.classList.contains("green")) {
-      key.classList.remove("gray");
-      key.classList.add("yellow");
-    } else if (
-      feedback[i] === "gray" &&
-      !key.classList.contains("green") &&
-      !key.classList.contains("yellow")
-    ) {
-      key.classList.add("gray");
-    }
-  }
-}
