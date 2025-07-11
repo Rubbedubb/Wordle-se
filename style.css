@@ -350,3 +350,19 @@ footer {
   z-index: 100;
   text-align: left;
 }
+
+#discord-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #5865F2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background-color 0.3s;
+}
+
+#discord-button:hover {
+  background-color: #4752C4;
+}
