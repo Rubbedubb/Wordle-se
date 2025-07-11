@@ -38,11 +38,11 @@ let wordListLoaded = false;
 let tries = 0; // Lägg till denna rad bland globala variabler
 
 // Ljudfiler (lägg till dina egna ljudfiler i projektmappen)
-const soundCorrect = new Audio("correct.mp3");
-const soundWrong = new Audio("wrong.mp3");
-const soundYellow = new Audio("yellow.mp3");
-const soundWin = new Audio("win.mp3");
-const soundLose = new Audio("lose.mp3");
+const soundCorrect = new Audio("sounds/correct.mp3");
+const soundWrong = new Audio("sounds/wrong.mp3");
+const soundYellow = new Audio("sounds/yellow.mp3");
+const soundWin = new Audio("sounds/win.mp3");
+const soundLose = new Audio("sounds/lose.mp3");
 
 fetch('wordList.txt')
   .then(response => {
@@ -87,7 +87,7 @@ function createRow(guess, feedback) {
     // Om föregående ljud var correct.mp3, vänta lite längre innan nästa ljud
     let delay = i * 300;
     if (i > 0 && feedback[i - 1] === "green") {
-      delay += 150; // Vänta 150 ms extra om förra var grön
+      delay += 0; // Vänta 0 ms extra om förra var grön
     }
 
     setTimeout(() => {
@@ -284,11 +284,6 @@ function saveResult(success, attempts) {
     localStorage.setItem("wordleHistory", JSON.stringify(history));
   }
 }
-
-
-
-
-
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("restart").addEventListener("click", restartGame);
