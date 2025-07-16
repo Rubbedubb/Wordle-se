@@ -1,4 +1,4 @@
-// Huvudscript för svensk Wordle-se
+// script.js
 
 // ---------- Socket.IO Setup ----------
 const socket = io("https://wordle-backend-63w9.onrender.com");
@@ -15,17 +15,22 @@ socket.on("restart", ({ word }) => {
   restartGame();
 });
 
-// ---------- Globala variabler ----------
-let isMultiplayer = false;
-let isHost = false;
-let currentParty = "";
-let playerName = "";
+// Lyssna på topplista från server och uppdatera
+socket.on("leaderboard", ({ players }) => updateLeaderboard(players));
 
-const board      = document.getElementById("board");
-const message    = document.getElementById("message");
-let lastGuess    = "";
-let hintUsed     = false;
-let playingDaily = false;
+// ---------- Globala variabler ----------
+let isMultiplayer   = false;
+let isHost          = false;
+let currentParty    = "";
+let playerName      = "";
+let tries           = 0;
+
+const board         = document.getElementById("board");
+const message       = document.getElementById("message");
+const leaderboardEl = document.getElementById("leaderboard"); // NYTT element
+let lastGuess       = "";
+let hintUsed        = false;
+let playingDaily    = false;
 
 // Ordbanker
 let dictionary       = [];
@@ -34,13 +39,12 @@ let wordList         = [];
 let shuffledWords    = [];
 let solution         = "";
 let wordListLoaded   = false;
-let tries            = 0;
 
 // DOM-element
 const input       = document.getElementById("guess");
 const guessButton = document.querySelector("button[onclick='checkGuess()']");
 const loadingMsg  = document.createElement("div");
-loadingMsg.id   = "loading-msg";
+loadingMsg.id     = "loading-msg";
 loadingMsg.textContent = "Laddar ordbank...";
 document.body.insertBefore(loadingMsg, document.body.firstChild);
 input.disabled = true;
@@ -54,10 +58,10 @@ const soundWin     = new Audio("sounds/win.mp3");
 const soundLose    = new Audio("sounds/lose.mp3");
 
 // ---------- Hämta ordlistor ----------
-fetch('ord.txt')
+fetch("ord.txt")
   .then(r => r.ok ? r.text() : Promise.reject())
   .then(text => {
-    dictionary = text.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+    dictionary = text.split(",").map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
     dictionaryLoaded = true;
     input.disabled = false;
     if (guessButton) guessButton.disabled = false;
@@ -68,22 +72,17 @@ fetch('ord.txt')
     alert("Kunde inte ladda ordlistan.");
   });
 
-fetch('wordList.txt')
+fetch("wordList.txt")
   .then(r => r.ok ? r.text() : Promise.reject())
   .then(text => {
-    wordList = text.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+    wordList = text.split(",").map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
     shuffledWords = shuffle([...wordList]);
     wordListLoaded = true;
-
-    // —————— NY KOD FÖR SINGELPLAYER ——————
     if (!isMultiplayer) {
-      // Sätt första ordet som lösning
       solution = shuffledWords[0];
-      // Öppna upp input och knapp
       input.disabled = false;
       if (guessButton) guessButton.disabled = false;
     }
-    // ————————————————————————————————
   })
   .catch(() => alert("Kunde inte ladda wordList.txt."));
 
@@ -99,49 +98,66 @@ function shuffle(array) {
 function createRow(guess, feedback) {
   const row = document.createElement("div");
   row.className = "row";
-
   for (let i = 0; i < 5; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
     tile.textContent = guess[i];
     row.appendChild(tile);
-
-    const delay = i * 300;
     setTimeout(() => {
-      tile.classList.add("flip");
-      tile.classList.add(feedback[i]);
-      // Spela ljud
-      if (feedback[i] === "green") {
-        soundCorrect.currentTime = 0;
-        soundCorrect.play();
-      } else if (feedback[i] === "yellow") {
-        soundYellow.currentTime = 0;
-        soundYellow.play();
-      } else {
-        soundWrong.currentTime = 0;
-        soundWrong.play();
-      }
-    }, delay);
+      tile.classList.add("flip", feedback[i]);
+      if (feedback[i] === "green") soundCorrect.play();
+      else if (feedback[i] === "yellow") soundYellow.play();
+      else soundWrong.play();
+    }, i * 300);
   }
   board.appendChild(row);
 }
 
+function updateKeyboard(guess, feedback) {
+  document.querySelectorAll(".key").forEach(key => {
+    const letter = key.textContent;
+    for (let i = 0; i < 5; i++) {
+      if (letter === guess[i].toUpperCase()) {
+        key.classList.add(feedback[i]);
+      }
+    }
+  });
+}
+
+function updateLeaderboard(players) {
+  // players = [ { name, score }, ... ]
+  leaderboardEl.innerHTML = "<h3>🏆 Topplista</h3>";
+  const ul = document.createElement("ul");
+  ul.style.listStyle = "none";
+  ul.style.padding = "0";
+  players.forEach((p, i) => {
+    const li = document.createElement("li");
+    li.textContent = `${i+1}. ${p.name} – ${p.score} poäng`;
+    ul.appendChild(li);
+  });
+  leaderboardEl.appendChild(ul);
+}
+
 function checkGuess() {
   if (input.disabled) return;
-  const guess = input.value.toLowerCase();
+  const guess = input.value.toLowerCase().trim();
   if (guess.length !== 5) return alert("Ordet måste vara 5 bokstäver!");
   if (!dictionaryLoaded || !wordListLoaded) return alert("Ordlistor laddas – vänta.");
   if (!dictionary.includes(guess)) return alert("Ordet finns inte.");
 
-  let feedback = Array(5).fill("gray");
-  let used     = Array(5).fill(false);
+  let feedback = Array(5).fill("gray"), used = Array(5).fill(false);
   for (let i = 0; i < 5; i++) {
     if (guess[i] === solution[i]) { feedback[i] = "green"; used[i] = true; }
   }
   for (let i = 0; i < 5; i++) {
-    if (feedback[i] === "green") continue;
-    for (let j = 0; j < 5; j++) {
-      if (!used[j] && guess[i] === solution[j]) { feedback[i] = "yellow"; used[j] = true; break; }
+    if (feedback[i] !== "green") {
+      for (let j = 0; j < 5; j++) {
+        if (!used[j] && guess[i] === solution[j]) {
+          feedback[i] = "yellow";
+          used[j] = true;
+          break;
+        }
+      }
     }
   }
 
@@ -161,6 +177,15 @@ function checkGuess() {
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(true, tries);
+
+    // Multiplayer finish
+    if (isMultiplayer) {
+      socket.emit("finish", {
+        party: currentParty,
+        tries,
+        finishTime: Date.now()
+      });
+    }
   } else if (tries >= 6) {
     soundLose.play();
     message.textContent = `❌ Förlust! Ordet var ${solution.toUpperCase()}`;
@@ -192,21 +217,16 @@ function resetKeyboardColors() {
 
 function restartGame() {
   if (!wordListLoaded) return alert("Laddar ordlistan…");
-
   hintUsed = false;
   lastGuess = "";
   tries = 0;
   board.innerHTML = "";
   message.textContent = "";
   resetKeyboardColors();
-
-  // Endast i singelplayer: hämta nytt ord
   if (!isMultiplayer) {
     shuffledWords = shuffle([...wordList]);
     solution      = shuffledWords[0];
   }
-
-  // Oavsett läge: öppna input
   input.disabled = false;
   if (guessButton) guessButton.disabled = false;
 }
@@ -242,28 +262,13 @@ function saveResult(success, attempts) {
   }
 }
 
-function updateKeyboard(guess, feedback) {
-  document.querySelectorAll(".key").forEach(key => {
-    const letter = key.textContent;
-    for (let i = 0; i < 5; i++) {
-      if (letter === guess[i].toUpperCase()) {
-        key.classList.add(feedback[i]);
-      }
-    }
-  });
-}
-
 // ---------- Setup Events ----------
 document.addEventListener("DOMContentLoaded", () => {
-  // Dölj host-kontroller
   document.getElementById("host-controls").style.display = "none";
-
-  // Standardknappar
   document.getElementById("restart").addEventListener("click", restartGame);
   document.getElementById("hint-button").addEventListener("click", showHint);
   document.getElementById("play-daily").addEventListener("click", startDailyGame);
 
-  // Tangentbord & Enter
   input.addEventListener("keydown", e => { if (e.key === "Enter") checkGuess(); });
   document.querySelectorAll(".key").forEach(key => {
     if (key.id === "backspace") return;
@@ -275,12 +280,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!input.disabled) input.value = input.value.slice(0, -1);
   });
 
-  // Multiplayer-knappar
   document.getElementById("create-party").addEventListener("click", () => {
-    playerName = prompt("Ditt namn:");
-    currentParty = generatePartyCode();
+    playerName    = prompt("Ditt namn:");
+    currentParty  = generatePartyCode();
     isMultiplayer = true;
-    isHost = true;
+    isHost        = true;
     socket.emit("join", { name: playerName, party: currentParty });
     document.getElementById("party-info").innerHTML = `
       <p>Du har skapat party: <strong>${currentParty}</strong></p>
@@ -289,18 +293,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("join-party").addEventListener("click", () => {
-    playerName = prompt("Ditt namn:");
-    currentParty = document.getElementById("join-code").value.toUpperCase().trim();
+    playerName    = prompt("Ditt namn:");
+    currentParty  = document.getElementById("join-code").value.toUpperCase().trim();
     if (currentParty.length < 3) return alert("Ogiltig partykod");
     isMultiplayer = true;
-    isHost = false;
+    isHost        = false;
     socket.emit("join", { name: playerName, party: currentParty });
     document.getElementById("party-info").innerHTML = `
       <p>Du gick med i party: <strong>${currentParty}</strong></p>`;
     document.getElementById("host-controls").style.display = "none";
   });
 
-  // Host-kontroller
   document.getElementById("start-game").addEventListener("click", () => {
     if (isHost) socket.emit("startGame", { party: currentParty });
   });
@@ -308,16 +311,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isHost) socket.emit("restartGame", { party: currentParty });
   });
 
-  // Historik
   document.getElementById("show-history").addEventListener("click", () => {
     const history = JSON.parse(localStorage.getItem("wordleHistory") || "[]");
     const container = document.getElementById("history");
     if (!history.length) return container.innerHTML = "<p>Inga resultat ännu.</p>";
     let html = "<h3>📈 Historik</h3><ul style='list-style:none;padding:0'>";
-    history.forEach(e => html += `<li>${e.date} – Dag ${e.dayNumber} – ${e.success?`✅ ${e.attempts}/6`:'❌ Förlorade'} – (${e.word.toUpperCase()})</li>`);
+    history.forEach(e => {
+      html += `<li>${e.date} – Dag ${e.dayNumber} – ${e.success ? `✅ ${e.attempts}/6` : '❌ Förlorade'} – (${e.word.toUpperCase()})</li>`;
+    });
     container.innerHTML = html + "</ul>";
   });
 
-  // Starta singelplayer-omgång direkt
   if (!isMultiplayer) restartGame();
 });
