@@ -3,6 +3,15 @@
 // ---------- Socket.IO Setup ----------
 const socket = io("https://wordle-backend-63w9.onrender.com");
 
+// NYTT: system-/chat-meddelanden från servern
+socket.on("message", msg => {
+  const box = document.getElementById("party-info");
+  if (!box) return;
+  const p = document.createElement("p");
+  p.textContent = msg;
+  box.appendChild(p);
+});
+
 socket.on("start", ({ word }) => {
   console.log("Spelet har börjat – ordet är:", word);
   solution = word;
@@ -172,6 +181,7 @@ function checkGuess() {
   }
 
   if (guess === solution) {
+    // ... befintlig vinst‑kod ...
     soundWin.play();
     message.textContent = `🎉 Klarade på ${tries}/6!`;
     input.disabled = true;
@@ -192,6 +202,16 @@ function checkGuess() {
     input.disabled = true;
     if (guessButton) guessButton.disabled = true;
     if (playingDaily) saveResult(false, tries);
+
+    if (isMultiplayer) {
+      // → Skicka även misslyckanden till servern
+      socket.emit("finish", {
+        party: currentParty,
+        tries,
+        finishTime: Date.now(),
+        lost: true
+      });
+    }
   }
 }
 
