@@ -368,6 +368,7 @@ footer {
 }
 
 .leaderboard {
+  color: #000;
   position: absolute;
   top: 100px;
   right: 20px;
