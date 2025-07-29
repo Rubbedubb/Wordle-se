@@ -369,11 +369,13 @@ footer {
 
 .leaderboard {
   color: #000;
-  position: absolute;
-  top: 100px;
-  right: 20px;
-  width: 200px;
-  background: rgba(255,255,255,0.9);
-  padding: 10px;
-  border-radius: 8px;
+  z-index: 200;      /* säkerställer att rutan hamnar över allt annat */
+  border: 1px solid #555; /* tydlig kant så det inte bara ser ut som ett streck */
+  min-height: 60px;  /* förhindra att långa ord "krossar" layouten */
+}
+
+.leaderboard h3,
+.leaderboard li {
+  color: #000;       /* tvinga även rubrik och listpunkter till svart */
+  margin: 4px 0;    /* lite luft mellan raderna */
 }
